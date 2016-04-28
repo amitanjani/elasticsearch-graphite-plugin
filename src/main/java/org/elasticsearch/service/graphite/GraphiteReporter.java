@@ -43,8 +43,10 @@ public class GraphiteReporter {
     private final String host;
     private final int port;
     private final String prefix;
+    private final String nodeName;
     private List<IndexShard> indexShards;
     private NodeStats nodeStats;
+    private boolean masterNode;
     private final Pattern graphiteInclusionRegex;
     private final Pattern graphiteExclusionRegex;
     private final String timestamp;
@@ -52,8 +54,8 @@ public class GraphiteReporter {
 
 
     public GraphiteReporter(String host, int port, String prefix, NodeIndicesStats nodeIndicesStats,
-                            List<IndexShard> indexShards, NodeStats nodeStats,
-                            Pattern graphiteInclusionRegex, Pattern graphiteExclusionRegex) {
+                            List<IndexShard> indexShards, NodeStats nodeStats, 
+                            Pattern graphiteInclusionRegex, Pattern graphiteExclusionRegex, boolean masterNode, String nodeName) {
         this.host = host;
         this.port = port;
         this.prefix = prefix;
@@ -63,6 +65,8 @@ public class GraphiteReporter {
         this.graphiteExclusionRegex = graphiteExclusionRegex;
         this.timestamp = Long.toString(System.currentTimeMillis() / 1000);
         this.nodeIndicesStats = nodeIndicesStats;
+        this.masterNode = masterNode;
+        this.nodeName = nodeName;
     }
 
     public void run() {
@@ -70,9 +74,10 @@ public class GraphiteReporter {
         try {
             socket = getSocket();
             writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-
-            sendNodeIndicesStats();
-            sendIndexShardStats();
+            if(masterNode){
+            	sendNodeIndicesStats();
+                sendIndexShardStats();
+            }
             sendNodeStats();
 
             writer.flush();
@@ -97,7 +102,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeThreadPoolStats(ThreadPoolStats threadPoolStats) {
-        String type = buildMetricName("node.threadpool");
+        String type = buildNodeMetricName("node.threadpool");
         Iterator<ThreadPoolStats.Stats> statsIterator = threadPoolStats.iterator();
         while (statsIterator.hasNext()) {
             ThreadPoolStats.Stats stats = statsIterator.next();
@@ -113,7 +118,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeTransportStats(TransportStats transportStats) {
-        String type = buildMetricName("node.transport");
+        String type = buildNodeMetricName("node.transport");
         sendInt(type, "serverOpen", transportStats.serverOpen());
         sendInt(type, "rxCount", transportStats.rxCount());
         sendInt(type, "rxSizeBytes", transportStats.rxSize().bytes());
@@ -122,7 +127,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeProcessStats(ProcessStats processStats) {
-        String type = buildMetricName("node.process");
+        String type = buildNodeMetricName("node.process");
 
         sendInt(type, "openFileDescriptors", processStats.openFileDescriptors());
         if (processStats.cpu() != null) {
@@ -140,7 +145,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeOsStats(OsStats osStats) {
-        String type = buildMetricName("node.os");
+        String type = buildNodeMetricName("node.os");
 
         if (osStats.cpu() != null) {
             sendInt(type + ".cpu", "sys", osStats.cpu().sys());
@@ -164,7 +169,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeNetworkStats(NetworkStats networkStats) {
-        String type = buildMetricName("node.network.tcp");
+        String type = buildNodeMetricName("node.network.tcp");
         NetworkStats.Tcp tcp = networkStats.tcp();
 
         // might be null, if sigar isnt loaded
@@ -183,7 +188,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeJvmStats(JvmStats jvmStats) {
-        String type = buildMetricName("node.jvm");
+        String type = buildNodeMetricName("node.jvm");
         sendInt(type, "uptime", jvmStats.uptime().seconds());
 
         // mem
@@ -229,7 +234,7 @@ public class GraphiteReporter {
     }
 
     private void sendNodeHttpStats(HttpStats httpStats) {
-        String type = buildMetricName("node.http");
+        String type = buildNodeMetricName("node.http");
         sendInt(type, "serverOpen", httpStats.getServerOpen());
         sendInt(type, "totalOpen", httpStats.getTotalOpen());
     }
@@ -238,7 +243,7 @@ public class GraphiteReporter {
         Iterator<FsStats.Info> infoIterator = fs.iterator();
         int i = 0;
         while (infoIterator.hasNext()) {
-            String type = buildMetricName("node.fs") + i;
+            String type = buildNodeMetricName("node.fs") + i;
             FsStats.Info info = infoIterator.next();
             sendInt(type, "available", info.getAvailable().bytes());
             sendInt(type, "total", info.getTotal().bytes());
@@ -418,6 +423,10 @@ public class GraphiteReporter {
 
     protected String buildMetricName(String name) {
         return prefix + "." + name;
+    }
+    
+    protected String buildNodeMetricName(String name){
+    	return prefix + "." + nodeName + "." + name;
     }
 
     private void flushWriter() {

@@ -54,7 +54,7 @@ public class GraphitePluginIntegrationTest {
         assertGraphiteMetricIsContained("^elasticsearch." + clusterName + ".indexes." + index + ".id.0.indexing._all.indexCount 1");
         assertGraphiteMetricIsContained("^elasticsearch." + clusterName + ".indexes." + index + ".id.0.indexing." + type + ".indexCount 1");
         assertGraphiteMetricIsContained("^elasticsearch." + clusterName + ".indexes." + index + ".id.0.search._all.queryCount ");
-        assertGraphiteMetricIsContained("^elasticsearch." + clusterName + ".node.jvm.threads.peakCount ");
+        //assertGraphiteMetricIsContained("^elasticsearch." + clusterName + ".node.jvm.threads.peakCount ");
         assertGraphiteMetricIsContained("^elasticsearch." + clusterName + ".node.search._all.queryCount ");
     }
 
@@ -108,7 +108,7 @@ public class GraphitePluginIntegrationTest {
 
         ensureValidKeyNames();
         assertGraphiteMetricIsNotContained("elasticsearch." + clusterName + ".indexes." + index + ".id.0.indexing._all.indexCount 1");
-        assertGraphiteMetricIsContained("elasticsearch." + clusterName + ".node.jvm.threads.peakCount ");
+        //assertGraphiteMetricIsContained("elasticsearch." + clusterName + ".node.jvm.threads.peakCount ");
     }
 
     @Test(expected = ProvisionException.class)

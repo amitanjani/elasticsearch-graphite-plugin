@@ -31,6 +31,7 @@ public class GraphiteService extends AbstractLifecycleComponent<GraphiteService>
     private final Integer graphitePort;
     private final TimeValue graphiteRefreshInternal;
     private final String graphitePrefix;
+    private final String nodeName;
     private Pattern graphiteInclusionRegex;
     private Pattern graphiteExclusionRegex;
 
@@ -47,6 +48,7 @@ public class GraphiteService extends AbstractLifecycleComponent<GraphiteService>
         graphiteHost = settings.get("metrics.graphite.host");
         graphitePort = settings.getAsInt("metrics.graphite.port", 2003);
         graphitePrefix = settings.get("metrics.graphite.prefix", "elasticsearch" + "." + settings.get("cluster.name"));
+        nodeName = settings.get("node.name");
         String graphiteInclusionRegexString = settings.get("metrics.graphite.include");
         if (graphiteInclusionRegexString != null) {
             graphiteInclusionRegex = Pattern.compile(graphiteInclusionRegexString);
@@ -101,19 +103,15 @@ public class GraphiteService extends AbstractLifecycleComponent<GraphiteService>
                 DiscoveryNode node = clusterService.localNode();
                 boolean isClusterStarted = clusterService.lifecycleState().equals(Lifecycle.State.STARTED);
 
-                if (isClusterStarted && node != null && node.isMasterNode()) {
+                if (isClusterStarted && node != null) {
                     NodeIndicesStats nodeIndicesStats = indicesService.stats(false);
                     CommonStatsFlags commonStatsFlags = new CommonStatsFlags().clear();
                     NodeStats nodeStats = nodeService.stats(commonStatsFlags, true, true, true, true, true, true, true, true, true);
                     List<IndexShard> indexShards = getIndexShards(indicesService);
 
                     GraphiteReporter graphiteReporter = new GraphiteReporter(graphiteHost, graphitePort, graphitePrefix,
-                            nodeIndicesStats, indexShards, nodeStats, graphiteInclusionRegex, graphiteExclusionRegex);
+                            nodeIndicesStats, indexShards, nodeStats, graphiteInclusionRegex, graphiteExclusionRegex, node.isMasterNode(), nodeName);
                     graphiteReporter.run();
-                } else {
-                    if (node != null) {
-                        logger.debug("[{}]/[{}] is not master node, not triggering update", node.getId(), node.getName());
-                    }
                 }
 
                 try {
